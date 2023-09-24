@@ -1,12 +1,13 @@
 import numpy as np
-import sys
+#from sklearn.linear_model
 
-path = 'C:/Users/Tiago/Desktop/ML_Lab/'
+path = 'C:/Users/Tiago/Desktop/Lab_ML/'
 
 def y_calc(beta, input_set):
     n_features = input_set.shape[0]
     X0 = np.ones((n_features, 1))
     X = np.hstack((X0, input_set))
+    print(beta.shape[0])
     output_aprox = X @ beta
     return output_aprox
 
@@ -36,13 +37,13 @@ y_train = np.load(path + 'y_train_regression1.npy')
 print(x_test.shape)
 print(x_train.shape)
 print(y_train.shape)
-print(y_train)
+print(f'y_train: {y_train}')
 
 beta = beta_calc(x_train)
 y_approx = y_calc(beta, x_train)
 SSE = SSE_calc(y_train, y_approx)
 y_test = y_calc(beta, x_train)
-
+print(f'y_approx: {y_approx}')
 print(f'SSE = {SSE}')
 print(f'y_test = {y_test}')
 
