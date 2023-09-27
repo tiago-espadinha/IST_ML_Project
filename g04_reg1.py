@@ -5,8 +5,6 @@ from sklearn.model_selection import cross_validate
 
 path = 'lab1/data/'
 
-# np.save(path + 'y_test_regression1.npy', y_pred)
-
 def metrics(y_real, y_pred):
     if y_real.shape != y_pred.shape:
         print(f'y_real.shape = {y_real.shape}, y_pred.shape = {y_pred.shape}')
@@ -40,11 +38,11 @@ def main():
     # Simple Linear Regression --------------------------------------------------
     regr = LinearRegression().fit(x_train, y_train)
 
-    y_pred = regr.predict(x_train)
-
     cv_SSE = cv_metrics(regr, x_train, y_train, k, N)
     print('SLR:\tcv_SSE\t= ', cv_SSE)
     # print('SLR:\tcv_r2\t= ', cv_r2)
+
+    y_pred = regr.predict(x_train)
     
     print('----------')
 
@@ -53,14 +51,15 @@ def main():
 
     ridgeCV = RidgeCV(alphas = alphas_RCV, cv = k).fit(x_train, y_train)
 
-    y_pred = ridgeCV.predict(x_train).reshape(N, 1)
-
     # print('RCV:\ty_pred\t=\n', y_pred)
     # print('Best alpha RCV\t= ', ridgeCV.alpha_)
 
     cv_SSE = cv_metrics(ridgeCV, x_train, y_train, k, N)
     print('RCV:\tcv_SSE\t= ', cv_SSE)
     # print('RCV:\tcv_r2\t= ', cv_r2)
+
+    y_pred = ridgeCV.predict(x_train).reshape(N, 1)
+    np.save(path + 'y_test_regression1.npy', y_pred)
 
     print('----------')
 
@@ -69,14 +68,14 @@ def main():
 
     lassoCV = LassoCV(alphas = alphas_LCV, cv = k).fit(x_train, y_train.ravel())
 
-    y_pred = lassoCV.predict(x_train).reshape(N, 1)
-
     # print('LCV:\ty_pred\t=\n', y_pred)
     # print('Best alpha LCV\t= ', lassoCV.alpha_)
 
     cv_SSE = cv_metrics(lassoCV, x_train, y_train.ravel(), k, N)
     print('LCV:\tcv_SSE\t= ', cv_SSE)
     # print('LCV:\tcv_r2\t= ', cv_r2)
+
+    y_pred = lassoCV.predict(x_train).reshape(N, 1)
 
     print('----------')
 
@@ -102,14 +101,14 @@ def main():
     print('ENCV:\tbest_l1_ratio\t= ', best_l1_ratio)
     elasticNetCV = ElasticNetCV(alphas = alphas_ENCV, cv = k, l1_ratio = best_l1_ratio).fit(x_train, y_train.ravel())
     
-    y_pred = elasticNetCV.predict(x_train).reshape(N, 1)
-
     # print('ENCV:\ty_pred\t=\n', y_pred)
     # print('Best alpha ENCV\t= ', elasticNetCV.alpha_)
     
     cv_SSE = cv_metrics(elasticNetCV, x_train, y_train.ravel(), k, N)
     print('ENCV:\tcv_SSE\t= ', cv_SSE)
     # print('ENCV:\tcv_r2\t= ', cv_r2)
+
+    y_pred = elasticNetCV.predict(x_train).reshape(N, 1)
 
     print('----------')
 
