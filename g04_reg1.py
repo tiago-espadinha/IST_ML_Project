@@ -37,47 +37,50 @@ def main():
 
     # Simple Linear Regression --------------------------------------------------
     regr = LinearRegression().fit(x_train, y_train)
-
-    cv_SSE = cv_metrics(regr, x_train, y_train, k, N)
-    print('SLR:\tcv_SSE\t= ', cv_SSE)
-    # print('SLR:\tcv_r2\t= ', cv_r2)
-
-    y_pred = regr.predict(x_train)
     
-    print('----------')
+    y_pred = regr.predict(x_train)
+    # np.save(path + 'y_test_regression1.npy', y_pred)
+    # print('SLR:\ty_pred\t=\n', y_pred)
+    
+    cv_SSE = cv_metrics(regr, x_train, y_train, k, N)
+    print('SLR:\tcv_SSE\t\t= ', cv_SSE)
+    # print('SLR:\tcv_r2\t\t= ', cv_r2)   
+    
+    print('--------------------------------------------------')
 
     # RidgeCV -------------------------------------------------------------------
-    alphas_RCV = np.arange(0.00001, 0.8, step)
+    alphas_RCV = np.arange(0.00001, 1, step)
 
     ridgeCV = RidgeCV(alphas = alphas_RCV, cv = k).fit(x_train, y_train)
-
+    
+    y_pred = ridgeCV.predict(x_train).reshape(N, 1)
+    # np.save(path + 'y_test_regression1.npy', y_pred)
     # print('RCV:\ty_pred\t=\n', y_pred)
-    # print('Best alpha RCV\t= ', ridgeCV.alpha_)
+    
+    print('RCV:\tBest alpha\t= ', ridgeCV.alpha_)
 
     cv_SSE = cv_metrics(ridgeCV, x_train, y_train, k, N)
-    print('RCV:\tcv_SSE\t= ', cv_SSE)
-    # print('RCV:\tcv_r2\t= ', cv_r2)
+    print('RCV:\tcv_SSE\t\t= ', cv_SSE)
+    # print('RCV:\tcv_r2\t\t= ', cv_r2)
 
-    y_pred = ridgeCV.predict(x_train).reshape(N, 1)
-    np.save(path + 'y_test_regression1.npy', y_pred)
-
-    print('----------')
+    print('--------------------------------------------------')
 
     # LassoCV -------------------------------------------------------------------
-    alphas_LCV = np.arange(0.00001, 0.8, step)
+    alphas_LCV = np.arange(0.00001, 1, step)
 
     lassoCV = LassoCV(alphas = alphas_LCV, cv = k).fit(x_train, y_train.ravel())
-
+    
+    y_pred = lassoCV.predict(x_train).reshape(N, 1)
+    # np.save(path + 'y_test_regression1.npy', y_pred)
     # print('LCV:\ty_pred\t=\n', y_pred)
-    # print('Best alpha LCV\t= ', lassoCV.alpha_)
+
+    print('LCV:\tBest alpha\t= ', lassoCV.alpha_)
 
     cv_SSE = cv_metrics(lassoCV, x_train, y_train.ravel(), k, N)
-    print('LCV:\tcv_SSE\t= ', cv_SSE)
-    # print('LCV:\tcv_r2\t= ', cv_r2)
+    print('LCV:\tcv_SSE\t\t= ', cv_SSE)
+    # print('LCV:\tcv_r2\t\t= ', cv_r2) 
 
-    y_pred = lassoCV.predict(x_train).reshape(N, 1)
-
-    print('----------')
+    print('--------------------------------------------------')
 
     # ElasticNetCV --------------------------------------------------------------
     alphas_ENCV = np.arange(0.00001, 0.8, step)
@@ -86,11 +89,6 @@ def main():
 
     for l1_ratio in l1_ratios_ENCV:
         elasticNetCV = ElasticNetCV(alphas = alphas_ENCV, cv = k, l1_ratio = l1_ratio).fit(x_train, y_train.ravel())
-    
-        y_pred = elasticNetCV.predict(x_train).reshape(N, 1)
-
-        # print('ENCV:\ty_pred\t=\n', y_pred)
-        # print('Best alpha ENCV\t= ', elasticNetCV.alpha_)
         
         cv_SSE_aux = cv_metrics(elasticNetCV, x_train, y_train.ravel(), k, N)
         
@@ -98,19 +96,20 @@ def main():
             cv_SSE = cv_SSE_aux
             best_l1_ratio = l1_ratio
 
-    print('ENCV:\tbest_l1_ratio\t= ', best_l1_ratio)
     elasticNetCV = ElasticNetCV(alphas = alphas_ENCV, cv = k, l1_ratio = best_l1_ratio).fit(x_train, y_train.ravel())
     
+    y_pred = elasticNetCV.predict(x_train).reshape(N, 1)
+    # np.save(path + 'y_test_regression1.npy', y_pred)
     # print('ENCV:\ty_pred\t=\n', y_pred)
-    # print('Best alpha ENCV\t= ', elasticNetCV.alpha_)
+
+    print('ENCV:\tBest alpha\t= ', elasticNetCV.alpha_)
+    print('ENCV:\tBest l1_ratio\t= ', best_l1_ratio)
     
     cv_SSE = cv_metrics(elasticNetCV, x_train, y_train.ravel(), k, N)
-    print('ENCV:\tcv_SSE\t= ', cv_SSE)
-    # print('ENCV:\tcv_r2\t= ', cv_r2)
+    print('ENCV:\tcv_SSE\t\t= ', cv_SSE)
+    # print('ENCV:\tcv_r2\t\t= ', cv_r2)
 
-    y_pred = elasticNetCV.predict(x_train).reshape(N, 1)
-
-    print('----------')
+    print('--------------------------------------------------')
 
 if __name__ == "__main__":
     main()
