@@ -1,3 +1,10 @@
+'''
+Machine Learning - Linear Regression Problem 1
+Authors:
+Tiago Simões, 96329
+Tomás Fonseca, 66325
+'''
+
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error, r2_score
@@ -5,8 +12,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
 from sklearn.model_selection import cross_validate
 
-# Change path to the folder where the data is located
-path = ''
+
+path = '' # Change path to the folder where the data is located
 k_save = 5 # k folds to save
 model_save = 'R' # model to save (R - Ridge, L - Lasso, EN - ElasticNet)
 single_model = False # True to run only the model specified in model_save
