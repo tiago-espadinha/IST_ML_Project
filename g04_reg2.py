@@ -22,6 +22,15 @@ k_save = 5 # k folds to save
 model_save = 'R' # model to save (R - Ridge, L - Lasso, EN - ElasticNet)
 single_model = False # True to run only the model specified in model_save
 
+def error_metrics(y_real, y_pred1, y_pred2):
+    error1_squared = np.square(y_real - y_pred1)
+    error2_squared = np.square(y_real - y_pred2)
+    y_squared = np.square(y_real)
+    perc1 = error1_squared / y_squared
+    perc2 = error2_squared / y_squared
+    print('error1_squared = ', error1_squared)
+    print('error2_squared = ', error2_squared)
+
 def gaussian_mixture(x_train, y_train):
     gmm = GaussianMixture(n_components = 2, covariance_type = 'full', random_state = 1)
     gmm.fit(x_train)
@@ -196,13 +205,19 @@ def main():
     #plot_features(X_train, y_train) # one possible outilier
     c1_x_train, c2_x_train, c1_y_train, c2_y_train = gaussian_mixture(X_train, y_train)
     #kmeans(X_train, y_train)
+    c1_x_train, c2_x_train, c1_y_train, c2_y_train = bayesian_gaussian_mixture(X_train, y_train)
     plt.show()
     X_scaler = StandardScaler()
     y_scaler = StandardScaler()
 
+    c1_x_train_scaled = X_scaler.fit(c1_x_train).transform(c1_x_train)
+    c1_y_train_scaled = y_scaler.fit(c1_y_train).transform(c1_y_train)
+    c2_x_train_scaled = X_scaler.fit(c2_x_train).transform(c2_x_train)
+    c2_y_train_scaled = y_scaler.fit(c2_y_train).transform(c2_y_train)
+
     X_train_scaled = X_scaler.fit(X_train).transform(X_train)
     y_train_scaled = y_scaler.fit(y_train).transform(y_train)
-    X_test_scaled = X_scaler.fit(X_test).transform(X_test)
+    # X_test_scaled = X_scaler.fit(X_test).transform(X_test)
 
     #plot_features(X_train_scaled, y_train_scaled)
 
@@ -214,45 +229,57 @@ def main():
     # Huber Regression -----------------------------------------------------------------------
     print('-------------------------------------------------------')
     print('Huber Regression')
-    c1_y_pred, huber1=huber_regression(c1_x_train, c1_y_train.ravel(), 0.1)
-    c2_y_pred, huber2=huber_regression(c2_x_train, c2_y_train.ravel(), 0.1)
-    c3_y_pred, huber3=huber_regression(X_train, y_train.ravel(), 0.1)
+    c1_y_pred, huber1=huber_regression(c1_x_train_scaled, c1_y_train_scaled.ravel(), 0.1)
+    c2_y_pred, huber2=huber_regression(c2_x_train_scaled, c2_y_train_scaled.ravel(), 0.1)
+    c3_y_pred, huber3=huber_regression(X_train_scaled, y_train.ravel(), 0.1)
 
-    SSE1, folds_SSE1 = cv_metrics(huber1, c1_x_train, c1_y_train.ravel(), 10)
-    SSE2, folds_SSE2 = cv_metrics(huber2, c2_x_train, c2_y_train.ravel(), 10)
-    SSE3, folds_SSE3 = cv_metrics(huber3, X_train, y_train.ravel(), 10)
+    SSE1, folds_SSE1 = cv_metrics(huber1, c1_x_train_scaled, c1_y_train_scaled.ravel(), c1_x_train_scaled.shape[0])
+    SSE2, folds_SSE2 = cv_metrics(huber2, c2_x_train_scaled, c2_y_train_scaled.ravel(), c2_x_train_scaled.shape[0])
+    SSE3, folds_SSE3 = cv_metrics(huber3, X_train_scaled, y_train_scaled.ravel(), X_train_scaled.shape[0])
+
+    coef1 = huber1.coef_
+    coef2 = huber2.coef_
+    coef3 = huber3.coef_
 
     print('cv_SSE\t\t= ', SSE1, ' + ', SSE2, ' + ', SSE3)
-    print('folds_cv_SSE\t= ', folds_SSE1, ' + ', folds_SSE2, ' + ', folds_SSE3)
+    print('coef1\t\t= ', coef1, ' + ', coef2, ' + ', coef3)
 
 
     # Theil-Sen Regression -----------------------------------------------------------------------
     print('-------------------------------------------------------')
     print('Theil-Sen Regression')
-    c1_y_pred, thiel1=theil_sen_regression(c1_x_train, c1_y_train.ravel())
-    c2_y_pred, thiel2=theil_sen_regression(c2_x_train, c2_y_train.ravel())
-    c3_y_pred, thiel3=theil_sen_regression(X_train, y_train.ravel())
+    c1_y_pred, thiel1=theil_sen_regression(c1_x_train_scaled, c1_y_train_scaled.ravel())
+    c2_y_pred, thiel2=theil_sen_regression(c2_x_train_scaled, c2_y_train_scaled.ravel())
+    c3_y_pred, thiel3=theil_sen_regression(X_train_scaled, y_train_scaled.ravel())
 
-    SSE1, folds_SSE1 = cv_metrics(thiel1, c1_x_train, c1_y_train.ravel(), 10)
-    SSE2, folds_SSE2 = cv_metrics(thiel2, c2_x_train, c2_y_train.ravel(), 10)
-    SSE3, folds_SSE3 = cv_metrics(thiel3, X_train, y_train.ravel(), 10)
-    
+    SSE1, folds_SSE1 = cv_metrics(thiel1, c1_x_train_scaled, c1_y_train_scaled.ravel(), c1_x_train_scaled.shape[0])
+    SSE2, folds_SSE2 = cv_metrics(thiel2, c2_x_train_scaled, c2_y_train_scaled.ravel(), c2_x_train_scaled.shape[0])
+    SSE3, folds_SSE3 = cv_metrics(thiel3, X_train_scaled, y_train_scaled.ravel(), X_train_scaled.shape[0])
+
+    coef1 = thiel1.coef_
+    coef2 = thiel2.coef_
+    coef3 = thiel3.coef_
+
     print('cv_SSE\t\t= ', SSE1, ' + ', SSE2, ' + ', SSE3)
-    print('folds_cv_SSE\t= ', folds_SSE1, ' + ', folds_SSE2, ' + ', folds_SSE3)
+    print('coef1\t\t= ', coef1, ' + ', coef2, ' + ', coef3)
 
     # RANSAC Regression -----------------------------------------------------------------------
     print('-------------------------------------------------------')
     print('RANSAC Regression')
-    c1_y_pred, ransac1=ransac_regression(c1_x_train, c1_y_train.ravel())
-    c2_y_pred, ransac2=ransac_regression(c2_x_train, c2_y_train.ravel())
-    c3_y_pred, ransac3=ransac_regression(X_train, y_train.ravel())
+    c1_y_pred, ransac1=ransac_regression(c1_x_train_scaled, c1_y_train_scaled.ravel())
+    c2_y_pred, ransac2=ransac_regression(c2_x_train_scaled, c2_y_train_scaled.ravel())
+    c3_y_pred, ransac3=ransac_regression(X_train_scaled, y_train_scaled.ravel())
 
-    SSE1, folds_SSE1 = cv_metrics(ransac1, c1_x_train, c1_y_train.ravel(), 10)
-    SSE2, folds_SSE2 = cv_metrics(ransac2, c2_x_train, c2_y_train.ravel(), 10)
-    SSE3, folds_SSE3 = cv_metrics(ransac3, X_train, y_train.ravel(), 10)
+    SSE1, folds_SSE1 = cv_metrics(ransac1, c1_x_train_scaled, c1_y_train_scaled.ravel(), c1_x_train_scaled.shape[0])
+    SSE2, folds_SSE2 = cv_metrics(ransac2, c2_x_train_scaled, c2_y_train_scaled.ravel(), c2_x_train_scaled.shape[0])
+    SSE3, folds_SSE3 = cv_metrics(ransac3, X_train_scaled, y_train_scaled.ravel(), X_train_scaled.shape[0])
+
+    coef1 = ransac1.estimator_.coef_
+    coef2 = ransac2.estimator_.coef_
+    coef3 = ransac3.estimator_.coef_
     
     print('cv_SSE\t\t= ', SSE1, ' + ', SSE2, ' + ', SSE3)
-    print('folds_cv_SSE\t= ', folds_SSE1, ' + ', folds_SSE2, ' + ', folds_SSE3)
+    print('coef1\t\t= ', coef1, ' + ', coef2, ' + ', coef3)
     return
 
     for k in k_tests:
