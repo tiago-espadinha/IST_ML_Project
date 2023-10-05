@@ -9,27 +9,35 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, HuberRegressor, RANSACRegressor, TheilSenRegressor
+from sklearn.linear_model import LinearRegression, HuberRegressor, RANSACRegressor, TheilSenRegressor
 from sklearn.model_selection import cross_validate
 
 from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
 from sklearn.cluster import KMeans
-import seaborn as sns
-
 
 path = '' # Change path to the folder where the data is located
-k_save = 5 # k folds to save
-model_save = 'R' # model to save (R - Ridge, L - Lasso, EN - ElasticNet)
-single_model = False # True to run only the model specified in model_save
+save_ratios = 'Huber' # 'Huber', 'Thiel', 'Ransac' or False
+show_plots = False
 
-def error_metrics(y_real, y_pred1, y_pred2):
-    error1_squared = np.square(y_real - y_pred1)
-    error2_squared = np.square(y_real - y_pred2)
-    y_squared = np.square(y_real)
-    perc1 = error1_squared / y_squared
-    perc2 = error2_squared / y_squared
-    print('error1_squared = ', error1_squared)
-    print('error2_squared = ', error2_squared)
+def error_metrics(y_real, x_real, model, save = False):
+    y_pred_c1 = model[0].predict(x_real)
+    y_pred_c2 = model[1].predict(x_real)
+
+    err_sq_1 = np.square(y_real - y_pred_c1)
+    err_sq_2 = np.square(y_real - y_pred_c2)
+    y_sq = np.square(y_real)
+
+    ratio_c1 = err_sq_1 / y_sq
+    ratio_c2 = err_sq_2 / y_sq
+    best_ratio = np.minimum(ratio_c1, ratio_c2)
+
+    n_10 = (best_ratio>0.20).sum()
+    print(n_10)
+
+    if save:
+        np.save(path + 'ratio1.npy', ratio_c1)
+        np.save(path + 'ratio2.npy', ratio_c2)
+        np.save(path + 'ratio.npy', best_ratio)
 
 def gaussian_mixture(x_train, y_train):
     gmm = GaussianMixture(n_components = 2, covariance_type = 'full', random_state = 1)
@@ -75,12 +83,10 @@ def bayesian_gaussian_mixture(x_train, y_train):
     category_labels = np.repeat(categories, x_train.shape[0])
     hue = ['Cluster 2' if i == 1 else 'Cluster 1' for i in clusters]
     hue = np.repeat(hue, x_train.shape[1]+ y_train.shape[1])
-    #sns.stripplot(x=category_labels, y=flattened_data, jitter=True, hue=hue)
     for i in range (x_train.shape[1]):
         plt.subplot(2, 2, i + 1)
         plt.scatter(x_train[:,i], y_train, c=clusters, s=50, cmap='viridis')
-        plt.title('K-Means Clustering - Feature ' + str(i+1))
-    plt.title('Gaussian Mixture Model')
+        plt.title('Bayesian Gaussian - Feature ' + str(i+1))
     
     return x_cluster1, x_cluster2, y_cluster1, y_cluster2
 
@@ -122,35 +128,13 @@ def metrics(y_real, y_pred):
         r2 = r2_score(y_real, y_pred)
         return SSE, r2
 
-def cv_metrics(model, x, y, k):
-    scoring = 'neg_mean_squared_error'
-    cv_results = cross_validate(model, x, y, cv = k, scoring = scoring, return_train_score = True)
-    
-    # print('cv_results\t= ', cv_results)
+def cv_metrics(model, x, y, n_folds):
+    cv_results = cross_validate(model, x, y, cv = n_folds, scoring = 'neg_mean_squared_error', return_train_score = True)
     
     avg_mse = np.mean(abs(cv_results['test_score']))
     folds_avg_mse = abs(cv_results['test_score'])
+    print('cv_MSE = ', avg_mse)
     return avg_mse, folds_avg_mse
-
-def plot_features(x_train, y_train):
-    colors = ['red', 'green', 'purple', 'orange', 'brown', 'pink', 'gray', 'olive', 'cyan', 'magenta']
-
-    plt.figure(figsize=(15, 6))
-    for i in range(x_train.shape[1]):
-        plt.subplot(2, 6, i + 1)
-        for j in range(len(y_train)):
-            plt.scatter(j, x_train[j, i], color=colors[j % len(colors)])
-        plt.xlabel(f'Feature {i + 1}')
-        plt.ylabel('Value')
-
-    plt.subplot(2, 6, 11)
-    for j in range(len(y_train)):
-        plt.scatter(j, y_train[j], color=colors[j % len(colors)])
-    plt.xlabel('Sample')
-    plt.ylabel('Output')
-
-    plt.tight_layout()
-    plt.show()
 
 def plot_SSE(x_arr, y_arr, best_x, best_y, title, k):
 
@@ -184,131 +168,105 @@ def plot_SSE_3D(data_arr, best_x, best_y, best_z, title, k):
 def huber_regression(x_train, y_train, alpha):
     huber = HuberRegressor(alpha=alpha).fit(x_train, y_train)
     huber_pred = huber.predict(x_train)
+    cv_metrics(huber, x_train, y_train.ravel(), x_train.shape[0])
     return huber_pred, huber
 
 def theil_sen_regression(x_train, y_train):
     theil_sen = TheilSenRegressor(random_state=1).fit(x_train, y_train)
     theil_sen_pred = theil_sen.predict(x_train)
+    cv_metrics(theil_sen, x_train, y_train.ravel(), x_train.shape[0])
     return theil_sen_pred, theil_sen
 
 def ransac_regression(x_train, y_train):
     ransac = RANSACRegressor(random_state=1).fit(x_train, y_train)
     ransac_pred = ransac.predict(x_train)
+    cv_metrics(ransac, x_train, y_train.ravel(), x_train.shape[0])
     return ransac_pred, ransac
 
 def main():
     
-    X_train = np.load(path + 'X_train_regression2.npy')
+    x_train = np.load(path + 'X_train_regression2.npy')
     y_train = np.load(path + 'y_train_regression2.npy')
-    X_test = np.load(path + 'X_test_regression2.npy')
+    x_test = np.load(path + 'X_test_regression2.npy')
 
-    #plot_features(X_train, y_train) # one possible outilier
-    c1_x_train, c2_x_train, c1_y_train, c2_y_train = gaussian_mixture(X_train, y_train)
-    #kmeans(X_train, y_train)
-    c1_x_train, c2_x_train, c1_y_train, c2_y_train = bayesian_gaussian_mixture(X_train, y_train)
-    plt.show()
-    X_scaler = StandardScaler()
+    c1_x_train, c2_x_train, c1_y_train, c2_y_train = gaussian_mixture(x_train, y_train)
+    c1_x_train, c2_x_train, c1_y_train, c2_y_train = bayesian_gaussian_mixture(x_train, y_train)
+
+    x_scaler = StandardScaler()
     y_scaler = StandardScaler()
 
-    c1_x_train_scaled = X_scaler.fit(c1_x_train).transform(c1_x_train)
+    c1_x_train_scaled = x_scaler.fit(c1_x_train).transform(c1_x_train)
     c1_y_train_scaled = y_scaler.fit(c1_y_train).transform(c1_y_train)
-    c2_x_train_scaled = X_scaler.fit(c2_x_train).transform(c2_x_train)
+    c2_x_train_scaled = x_scaler.fit(c2_x_train).transform(c2_x_train)
     c2_y_train_scaled = y_scaler.fit(c2_y_train).transform(c2_y_train)
 
-    X_train_scaled = X_scaler.fit(X_train).transform(X_train)
+    x_train_scaled = x_scaler.fit(x_train).transform(x_train)
     y_train_scaled = y_scaler.fit(y_train).transform(y_train)
-    # X_test_scaled = X_scaler.fit(X_test).transform(X_test)
-
-    #plot_features(X_train_scaled, y_train_scaled)
-
-    k_tests = [3, 5] # k folds to test
-    N_train = X_train.shape[0]
-    N_test = X_test.shape[0]
-
+    # X_test_scaled = x_scaler.fit(x_test).transform(x_test)
 
     # Huber Regression -----------------------------------------------------------------------
-    print('-------------------------------------------------------')
+    print('\n-------------------------------------------------------')
     print('Huber Regression')
+
+    print('Cluster 1:\t ', end='')
     c1_y_pred, huber1=huber_regression(c1_x_train_scaled, c1_y_train_scaled.ravel(), 0.1)
+    print('Cluster 2:\t ', end='')
     c2_y_pred, huber2=huber_regression(c2_x_train_scaled, c2_y_train_scaled.ravel(), 0.1)
-    c3_y_pred, huber3=huber_regression(X_train_scaled, y_train.ravel(), 0.1)
+    print('All data:\t ', end='')
+    c3_y_pred, huber3=huber_regression(x_train_scaled, y_train.ravel(), 0.1)
 
-    SSE1, folds_SSE1 = cv_metrics(huber1, c1_x_train_scaled, c1_y_train_scaled.ravel(), c1_x_train_scaled.shape[0])
-    SSE2, folds_SSE2 = cv_metrics(huber2, c2_x_train_scaled, c2_y_train_scaled.ravel(), c2_x_train_scaled.shape[0])
-    SSE3, folds_SSE3 = cv_metrics(huber3, X_train_scaled, y_train_scaled.ravel(), X_train_scaled.shape[0])
+    huber = [huber1, huber2, huber3]
+    
+    huber_save = False
+    if save_ratios == 'Huber':
+        huber_save = True
 
-    coef1 = huber1.coef_
-    coef2 = huber2.coef_
-    coef3 = huber3.coef_
-
-    print('cv_SSE\t\t= ', SSE1, ' + ', SSE2, ' + ', SSE3)
-    print('coef1\t\t= ', coef1, ' + ', coef2, ' + ', coef3)
-
+    error_metrics(y_train_scaled.ravel(), x_train_scaled, huber, huber_save)
 
     # Theil-Sen Regression -----------------------------------------------------------------------
-    print('-------------------------------------------------------')
+    print('\n-------------------------------------------------------')
     print('Theil-Sen Regression')
+
+    print('Cluster 1:\t ', end='')
     c1_y_pred, thiel1=theil_sen_regression(c1_x_train_scaled, c1_y_train_scaled.ravel())
+    print('Cluster 2:\t ', end='')
     c2_y_pred, thiel2=theil_sen_regression(c2_x_train_scaled, c2_y_train_scaled.ravel())
-    c3_y_pred, thiel3=theil_sen_regression(X_train_scaled, y_train_scaled.ravel())
+    print('All data:\t ', end='')
+    c3_y_pred, thiel3=theil_sen_regression(x_train_scaled, y_train_scaled.ravel())
 
-    SSE1, folds_SSE1 = cv_metrics(thiel1, c1_x_train_scaled, c1_y_train_scaled.ravel(), c1_x_train_scaled.shape[0])
-    SSE2, folds_SSE2 = cv_metrics(thiel2, c2_x_train_scaled, c2_y_train_scaled.ravel(), c2_x_train_scaled.shape[0])
-    SSE3, folds_SSE3 = cv_metrics(thiel3, X_train_scaled, y_train_scaled.ravel(), X_train_scaled.shape[0])
+    thiel = [thiel1, thiel2, thiel3]
 
-    coef1 = thiel1.coef_
-    coef2 = thiel2.coef_
-    coef3 = thiel3.coef_
+    thiel_save = False
+    if save_ratios == 'Thiel':
+        thiel_save = True
 
-    print('cv_SSE\t\t= ', SSE1, ' + ', SSE2, ' + ', SSE3)
-    print('coef1\t\t= ', coef1, ' + ', coef2, ' + ', coef3)
+    error_metrics(y_train_scaled.ravel(), x_train_scaled, thiel, thiel_save)
 
     # RANSAC Regression -----------------------------------------------------------------------
-    print('-------------------------------------------------------')
+    print('\n-------------------------------------------------------')
     print('RANSAC Regression')
+
+    print('Cluster 1:\t ', end='')
     c1_y_pred, ransac1=ransac_regression(c1_x_train_scaled, c1_y_train_scaled.ravel())
+    print('Cluster 2:\t ', end='')
     c2_y_pred, ransac2=ransac_regression(c2_x_train_scaled, c2_y_train_scaled.ravel())
-    c3_y_pred, ransac3=ransac_regression(X_train_scaled, y_train_scaled.ravel())
-
-    SSE1, folds_SSE1 = cv_metrics(ransac1, c1_x_train_scaled, c1_y_train_scaled.ravel(), c1_x_train_scaled.shape[0])
-    SSE2, folds_SSE2 = cv_metrics(ransac2, c2_x_train_scaled, c2_y_train_scaled.ravel(), c2_x_train_scaled.shape[0])
-    SSE3, folds_SSE3 = cv_metrics(ransac3, X_train_scaled, y_train_scaled.ravel(), X_train_scaled.shape[0])
-
-    coef1 = ransac1.estimator_.coef_
-    coef2 = ransac2.estimator_.coef_
-    coef3 = ransac3.estimator_.coef_
+    print('All data:\t ', end='')
+    c3_y_pred, ransac3=ransac_regression(x_train_scaled, y_train_scaled.ravel())
+    ransac=[ransac1, ransac2, ransac3]
     
-    print('cv_SSE\t\t= ', SSE1, ' + ', SSE2, ' + ', SSE3)
-    print('coef1\t\t= ', coef1, ' + ', coef2, ' + ', coef3)
+    ransac_save = False
+    if save_ratios == 'Ransac':
+        ransac_save = True
+
+    error_metrics(y_train_scaled.ravel(), x_train_scaled, ransac, ransac_save)
+
+    if show_plots:
+        plt.show()
     return
 
-    for k in k_tests:
-        print('-------------------------------------------------------')
-        print('k = ', k)
-        print()
-
-        # # Linear Regression ----------------------------------------------------------------------
-        regr = LinearRegression().fit(X_train_scaled, y_train_scaled)
-        
-        cv_SSE_LR, folds_cv_SSE_LR = cv_metrics(regr, X_train_scaled, y_train_scaled, k, N_train)
-        print('LR:\t\tcv_SSE\t\t= ', cv_SSE_LR)
-        print('LR:\t\tfolds_cv_SSE\t= ', folds_cv_SSE_LR)
-
-        y_train_pred_scaled_LR = regr.predict(X_train_scaled).reshape(N_train, 1)
-        y_train_pred_LR = y_scaler.inverse_transform(y_train_pred_scaled_LR)
-        
-        SSE_LR, r2_LR = metrics(y_train, y_train_pred_LR)
-
-        print('LR:\t\tSSE\t\t= ', SSE_LR)
-        print('LR:\t\tr2\t\t= ', r2_LR)
-
-        print()
-
-        if k == k_save and model_save == 'LR':
-            y_test_pred_scaled_LR = regr.predict(X_test_scaled).reshape(N_test, 1)
-            y_test_pred_LR = y_scaler.inverse_transform(y_test_pred_scaled_LR)
-            np.save(path + 'y_test_regression1.npy', y_test_pred_LR)
-            # print('SLR:\ty_test_pred\t=\n', y_test_pred_LR)
+    y_test_pred_LR = y_scaler.inverse_transform(y_test_pred_scaled_LR)
+    np.save(path + 'y_test_regression1.npy', y_test_pred_LR)
+    # print('SLR:\ty_test_pred\t=\n', y_test_pred_LR)
 
 if __name__ == "__main__":
     main()
