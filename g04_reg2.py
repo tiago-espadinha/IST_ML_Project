@@ -16,6 +16,7 @@ import seaborn as sns
 path = 'lab2/' # Change path to the folder where the data is located
 scale = True
 
+# Calculates the MSE for each cluster and the whole dataset
 def error_metrics(y_real, y_pred_c1, y_pred_c2, y_pred, inlier_mask):
 
     err_sq_1 = mean_squared_error(y_real[inlier_mask == True], y_pred_c1[inlier_mask == True])
@@ -28,7 +29,8 @@ def error_metrics(y_real, y_pred_c1, y_pred_c2, y_pred, inlier_mask):
 
     # error_SSE = np.sum(np.minimum(err_sq_1, err_sq_2))
     print('MSE\t= ', err_sq_1, '\t;\t', err_sq_2, '\t;\t', err_sq_3)
-    
+
+# Uses cross validation to calculate the MSE    
 def cv_metrics(model, x, y, k):
     scoring = 'neg_mean_squared_error'
     cv_results = cross_val_score(model, x, y, cv = k, scoring = scoring)
@@ -38,6 +40,7 @@ def cv_metrics(model, x, y, k):
     max_avg_mse = np.max(folds_avg_mse)
     return avg_mse, folds_avg_mse, max_avg_mse
 
+# Performs RANSAC clustering
 def ransac_classifier(x_train, y_train, res_threshold):
     ransac = RANSACRegressor(random_state = 1, residual_threshold = res_threshold).fit(x_train, y_train)
     inlier_mask = ransac.inlier_mask_
@@ -68,6 +71,7 @@ def ransac_classifier(x_train, y_train, res_threshold):
 
 def main():
     
+    # Load datasets
     X_train = np.load(path + 'X_train_regression2.npy')
     y_train = np.load(path + 'y_train_regression2.npy')
     X_test = np.load(path + 'X_test_regression2.npy')
@@ -92,6 +96,7 @@ def main():
 
     for alpha_c1 in alphas:
         
+        # identify clusters and fit regressor to first cluster
         ransac1, x_cluster1_scaled1, x_cluster2_scaled1, y_cluster1_scaled1, y_cluster2_scaled1, inlier_mask = ransac_classifier(X_train_scaled, y_train_scaled.ravel(), alpha_c1)
 
         regr1 = ransac1.fit(x_cluster1_scaled1, y_cluster1_scaled1)
@@ -99,21 +104,26 @@ def main():
         MSE1, _, max_MSE1 = cv_metrics(regr1, x_cluster1_scaled1, y_cluster1_scaled1.ravel(), x_cluster1_scaled1.shape[0])
         
         for alpha_c2 in alphas:
+
+            # fit regressor to second cluster
             ransac2, x_cluster1_scaled2, _, y_cluster1_scaled2, _, _ = ransac_classifier(x_cluster2_scaled1, y_cluster2_scaled1.ravel(), alpha_c2)
 
             regr2 = ransac2.fit(x_cluster1_scaled2, y_cluster1_scaled2)
 
             MSE2, _, max_MSE2 = cv_metrics(regr2, x_cluster2_scaled1, y_cluster2_scaled1.ravel(), x_cluster2_scaled1.shape[0])
 
+            # find best threshold combination
             if MSE1 + MSE2 < best_MSE:
                 best_MSE = MSE1 + MSE2
                 best_alpha_c1 = alpha_c1
                 best_alpha_c2 = alpha_c2
 
+    # fit regressor to first cluster with best thresholds
     ransac1, x_cluster1_scaled1, x_cluster2_scaled1, y_cluster1_scaled1, y_cluster2_scaled1, inlier_mask = ransac_classifier(X_train_scaled, y_train_scaled.ravel(), best_alpha_c1)
     regr1 = ransac1.fit(x_cluster1_scaled1, y_cluster1_scaled1)
     MSE1, _, max_MSE1 = cv_metrics(regr1, x_cluster1_scaled1, y_cluster1_scaled1.ravel(), x_cluster1_scaled1.shape[0])
 
+    # fit regressor to second cluster with best thresholds
     ransac2, x_cluster1_scaled2, _, y_cluster1_scaled2, _, _ = ransac_classifier(x_cluster2_scaled1, y_cluster2_scaled1.ravel(), best_alpha_c2)
     regr2 = ransac2.fit(x_cluster1_scaled2, y_cluster1_scaled2)
     MSE2, _, max_MSE2 = cv_metrics(regr2, x_cluster2_scaled1, y_cluster2_scaled1.ravel(), x_cluster2_scaled1.shape[0])
@@ -123,12 +133,14 @@ def main():
     print('x_cluster2.shape\t= ', x_cluster1_scaled2.shape)
     print('y_cluster2.shape\t= ', y_cluster1_scaled2.shape)
 
+    # fit regressor to all data
     regr3 = LinearRegression().fit(X_train_scaled, y_train_scaled.ravel())
     MSE3, _, max_MSE3 = cv_metrics(regr3, X_train_scaled, y_train_scaled.ravel(), 10)
 
     print('best_alpha_c1\t= ', best_alpha_c1)
     print('best_alpha_c2\t= ', best_alpha_c2)
     
+    # predict training data
     y_pred1_scaled = regr1.predict(X_train_scaled).reshape(y_train.shape[0], 1)
     y_pred2_scaled = regr2.predict(X_train_scaled).reshape(y_train.shape[0], 1)
     y_pred3_scaled = regr3.predict(X_train_scaled).reshape(y_train.shape[0], 1)
@@ -145,8 +157,10 @@ def main():
     print('cv_MSE\t= ', MSE1, '\t\t;\t', MSE2, '\t;\t', MSE3)
     print('max_MSE\t= ', max_MSE1, '\t\t;\t', max_MSE2, '\t;\t', max_MSE3)
     
+    # Analyse results
     error_metrics(y_train.ravel(), y_pred1.ravel(), y_pred2.ravel(), y_pred3.ravel(), inlier_mask)
 
+    # predict test data
     y_test_pred1_scaled = regr1.predict(X_test_scaled).reshape(X_test_scaled.shape[0], 1)
     y_test_pred2_scaled = regr2.predict(X_test_scaled).reshape(X_test_scaled.shape[0], 1)
 
