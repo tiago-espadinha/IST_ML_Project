@@ -6,7 +6,7 @@ from sklearn.linear_model import LinearRegression, RANSACRegressor, LassoCV
 from sklearn.model_selection import cross_val_score
 import seaborn as sns
 
-path = ''
+path = 'Reg2/'
 scale = True
 
 def error_metrics(y_real, y_pred_c1, y_pred_c2, y_pred, inlier_mask):

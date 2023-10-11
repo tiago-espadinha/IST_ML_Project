@@ -13,7 +13,7 @@ from sklearn.linear_model import LinearRegression, RANSACRegressor
 from sklearn.model_selection import cross_val_score
 
 # Change path to the folder where the data is located
-path = '' 
+path = 'Reg2/' 
 
 # Use StandardScaler to scale the data
 scale = True 

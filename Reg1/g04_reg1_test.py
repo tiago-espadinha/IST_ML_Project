@@ -4,7 +4,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
 from sklearn.model_selection import cross_validate
 
-path = ''
+path = 'Reg1/'
 
 def metrics(y_real, y_pred):
     if y_real.shape != y_pred.shape:
