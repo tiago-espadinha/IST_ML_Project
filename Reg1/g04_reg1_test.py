@@ -39,7 +39,7 @@ def main():
 
     y_test_pred_scaled_R = ridge.predict(X_test_scaled).reshape(N_test, 1)
     y_test_pred_R = y_scaler.inverse_transform(y_test_pred_scaled_R)
-    np.save(path + 'y_test_regression1_.npy', y_test_pred_R)
+    #np.save(path + 'y_test_regression1_.npy', y_test_pred_R)
     # print('Ridge:\ty_test_pred\t=\n', y_test_pred_R)
 
     test_pred = y_test_pred_R - y_test
