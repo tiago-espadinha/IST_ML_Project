@@ -526,8 +526,8 @@ def main():
         y_pred = np.argmax(cnn_model.predict(X_val_reshaped), axis = 1)
         print('Balanced accuracy score:', balanced_accuracy_score(Y_val, y_pred))
 
-        np.save(path + 'y_pred.npy', y_pred)
-        np.save(path + 'Y_val.npy', Y_val)
+        #np.save(path + 'y_pred.npy', y_pred)
+        #np.save(path + 'Y_val.npy', Y_val)
         y_test = np.argmax(cnn_model.predict(X_test_reshaped), axis = 1)
         np.save(path + 'ytest_Classification1.npy', y_test)
         plt.show()
