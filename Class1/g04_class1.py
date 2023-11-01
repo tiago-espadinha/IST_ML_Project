@@ -85,7 +85,7 @@ def logistic_regression(X_train, Y_train, grid_search, bal_mode):
 
 def naive_bayes(X_train, Y_train, nb_mode, bal_mode):
     if bal_mode == 'class_weight':
-        print('Class weight not supported for Naive Bayes!')
+        print('Class weight not implemented for Naive Bayes!')
         exit()
 
     if nb_mode == 'gaussian':
@@ -133,7 +133,7 @@ def svm(X_train, Y_train, grid_search, bal_mode):
 
 def cnn(X_train, Y_train, dropout, bal_mode):
     if bal_mode == 'class_weight':
-        print('Class weight not supported for CNN!')
+        print('Class weight not implemented for CNN!')
         exit()
 
     # Split training data into training and validation sets for the CNN
@@ -164,11 +164,10 @@ def cnn(X_train, Y_train, dropout, bal_mode):
     cnn.add(keras.layers.RandomFlip("horizontal_and_vertical", seed = seed))
     cnn.add(keras.layers.RandomRotation(0.1, seed = seed))
     cnn.add(keras.layers.RandomTranslation(0.1, 0.1, seed = seed))
-    cnn.add(keras.layers.RandomZoom(0.1, seed = seed))
 
     # 1st Convolutional Layer
     cnn.add(keras.layers.Conv2D(
-        filters = 16,
+        filters = 8,
         kernel_size = (3, 3),
         activation = 'relu',
         input_shape = (28, 28, 3)))
@@ -176,14 +175,14 @@ def cnn(X_train, Y_train, dropout, bal_mode):
         pool_size = (2, 2)))
     # 2nd Convolutional Layer
     cnn.add(keras.layers.Conv2D(
-        filters = 32,
+        filters = 16,
         kernel_size = (3, 3),
         activation = 'relu'))
     cnn.add(keras.layers.MaxPooling2D(
         pool_size = (2, 2)))
     # 3rd Convolutional Layer
     cnn.add(keras.layers.Conv2D(
-        filters = 64,
+        filters = 32,
         kernel_size = (3, 3),
         activation = 'relu'))
     cnn.add(keras.layers.MaxPooling2D(
@@ -194,31 +193,19 @@ def cnn(X_train, Y_train, dropout, bal_mode):
     cnn.add(keras.layers.Flatten())
     # 1st Dense Layer
     cnn.add(keras.layers.Dense(
-        units = 128,
+        units = 32,
         activation = 'relu'))
-    # # 2nd Dense Layer
-    # cnn.add(keras.layers.Dense(
-    #     units = 16,
-    #     activation = 'relu'))
-    # # 3rd Dense Layer
-    # cnn.add(keras.layers.Dense(
-    #     units = 16,
-    #     activation = 'relu'))
     # Output Layer
     cnn.add(keras.layers.Dense(
         units = 2,
         activation = 'softmax'))
     # Compile CNN
-    optimizer = keras.optimizers.Adam(learning_rate = 0.001, clipnorm = 1)
+    optimizer = keras.optimizers.AdamW(learning_rate = 0.0001, weight_decay = 0.001)
     cnn.compile(
         optimizer = optimizer,
         loss = 'categorical_crossentropy',
         metrics = [BalancedAccuracy()])
     
-    # cnn_aux = cnn
-    # cnn_aux.build(input_shape = X_train.shape)
-    # cnn_aux.summary()
-
     # Train CNN
     callback = keras.callbacks.EarlyStopping(
         monitor = 'val_loss', 
@@ -499,7 +486,7 @@ def main():
         X_train_bal, Y_train_bal, bal_mode = balance_data(X_train, Y_train, bal_mode)
         print('X_train_bal shape:\t\t', X_train_bal.shape)
         print('Y_train_bal shape:\t\t', Y_train_bal.shape, '\n')
-        svm_model = svm(X_train_bal, Y_train_bal, grid_search)
+        svm_model = svm(X_train_bal, Y_train_bal, grid_search, bal_mode)
         
         if grid_search:
             print('Best parameters:', svm_model.best_params_)
@@ -526,8 +513,8 @@ def main():
         y_pred = np.argmax(cnn_model.predict(X_val_reshaped), axis = 1)
         print('Balanced accuracy score:', balanced_accuracy_score(Y_val, y_pred))
 
-        #np.save(path + 'y_pred.npy', y_pred)
-        #np.save(path + 'Y_val.npy', Y_val)
+        # np.save(path + 'y_pred.npy', y_pred)
+        # np.save(path + 'Y_val.npy', Y_val)
         y_test = np.argmax(cnn_model.predict(X_test_reshaped), axis = 1)
         np.save(path + 'ytest_Classification1.npy', y_test)
         plt.show()
@@ -536,8 +523,6 @@ def main():
         print('Chose a valid model!')
     
     print('#################################################################')
-
-    
 
 if __name__ == "__main__":
     main()

@@ -22,7 +22,6 @@ scale = True
 # if False alpha_c1 = 0.6 and alpha_c2 = 0.7 are used
 test_alpha = False 
 
-
 # Calculates the MSE for each cluster and the whole dataset
 def error_metrics(y_real, y_pred_c1, y_pred_c2, y_pred, inlier):
     
